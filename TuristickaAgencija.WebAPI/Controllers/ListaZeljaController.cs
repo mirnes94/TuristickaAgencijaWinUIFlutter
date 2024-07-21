@@ -5,8 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
-using TuristickaAgencija.WebAPI.Services.ListaZelja;
 using Microsoft.AspNetCore.Authorization;
+using TuristickaAgencija.Services.ListaZelja;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {

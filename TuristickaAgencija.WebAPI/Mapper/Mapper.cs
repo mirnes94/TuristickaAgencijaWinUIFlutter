@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
-using TuristickaAgencija.WebAPI.Database;
+using TuristickaAgencija.Services.Database;
 
 namespace TuristickaAgencija.WebAPI.Mapper
 {
@@ -61,8 +61,8 @@ namespace TuristickaAgencija.WebAPI.Mapper
 
             CreateMap<VodiciPutovanja, Model.VodiciPutovanja>().ReverseMap();
 
-            CreateMap<Database.ListaZelja, Model.ListaZelja>();
-            CreateMap<Database.ListaZelja, ListaZeljaInsertUpdateRequest>().ReverseMap();
+            CreateMap<ListaZelja, Model.ListaZelja>();
+            CreateMap<ListaZelja, ListaZeljaInsertUpdateRequest>().ReverseMap();
 
         }
        

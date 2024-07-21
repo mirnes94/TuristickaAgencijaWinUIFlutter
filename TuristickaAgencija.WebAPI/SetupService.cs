@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TuristickaAgencija.WebAPI.Database;
+using TuristickaAgencija.Services.Database;
 
 namespace TuristickaAgencija.WebAPI
 {

@@ -1,0 +1,15 @@
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Services.deps.json
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Services.runtimeconfig.json
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Services.runtimeconfig.dev.json
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Services.dll
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Services.pdb
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Model.dll
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\bin\Debug\netcoreapp3.1\TuristickaAgencija.Model.pdb
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.csprojAssemblyReference.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.AssemblyInfoInputs.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.AssemblyInfo.cs
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.csproj.CoreCompileInputs.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.csproj.CopyComplete
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.dll
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.pdb
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Services\obj\Debug\netcoreapp3.1\TuristickaAgencija.Services.genruntimeconfig.cache

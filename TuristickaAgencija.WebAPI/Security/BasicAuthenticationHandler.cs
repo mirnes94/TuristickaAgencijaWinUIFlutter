@@ -9,8 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
-using TuristickaAgencija.WebAPI.Services.Korisnici;
-using TuristickaAgencija.WebAPI.Services.Uloge;
+using TuristickaAgencija.Services.Korisnici;
 
 namespace TuristickaAgencija.WebAPI.Security
 {

@@ -43,6 +43,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TuristickaAgencija.Model\TuristickaAgencija.Model.csproj" />
+    <ProjectReference Include="..\TuristickaAgencija.Services\TuristickaAgencija.Services.csproj" />
   </ItemGroup>
 
 

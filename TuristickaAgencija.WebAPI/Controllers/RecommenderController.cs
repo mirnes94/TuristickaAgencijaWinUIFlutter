@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using TuristickaAgencija.WebAPI.Services.RecommenderService;
+using TuristickaAgencija.Services.RecommenderService;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {

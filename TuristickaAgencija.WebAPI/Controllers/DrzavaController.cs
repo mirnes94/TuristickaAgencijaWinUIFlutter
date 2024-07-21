@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using TuristickaAgencija.Model;
 using TuristickaAgencija.Model.Request;
-using TuristickaAgencija.WebAPI.Services.Drzava;
+using TuristickaAgencija.Services.Drzava;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {

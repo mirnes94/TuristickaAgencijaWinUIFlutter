@@ -1,0 +1,9 @@
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\bin\Debug\netstandard2.0\TuristickaAgencija.Model.deps.json
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\bin\Debug\netstandard2.0\TuristickaAgencija.Model.dll
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\bin\Debug\netstandard2.0\TuristickaAgencija.Model.pdb
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.csprojAssemblyReference.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.AssemblyInfoInputs.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.AssemblyInfo.cs
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.csproj.CoreCompileInputs.cache
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.dll
+C:\Users\ACER\Documents\GitHub\TuristickaAgencijaWinUIFlutter\TuristickaAgencija.Model\obj\Debug\netstandard2.0\TuristickaAgencija.Model.pdb

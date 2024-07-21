@@ -1,13 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model;
 using TuristickaAgencija.Model.Request;
-using TuristickaAgencija.WebAPI.Services.Gradovi;
+using TuristickaAgencija.Services.Gradovi;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
@@ -26,8 +23,8 @@ namespace TuristickaAgencija.WebAPI.Controllers
         public ActionResult<List<Gradovi>> Get()
         {
             return _gradoviService.Get();
-
         }
+
         [HttpGet("{id}")]
         public Model.Gradovi GetById(int id)
         {

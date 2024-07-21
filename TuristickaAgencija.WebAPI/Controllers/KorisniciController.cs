@@ -7,8 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
-using TuristickaAgencija.WebAPI.Database;
-using TuristickaAgencija.WebAPI.Services.Korisnici;
+using TuristickaAgencija.Services.Korisnici;
 
 
 namespace TuristickaAgencija.WebAPI.Controllers

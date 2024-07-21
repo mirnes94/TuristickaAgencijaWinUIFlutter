@@ -3,7 +3,7 @@ using iTextSharp.text.pdf;
 using System.Collections.Generic;
 using System.IO;
 using TuristickaAgencija.Model;
-using TuristickaAgencija.WebAPI.Services.Uplate;
+using TuristickaAgencija.Services.Uplate;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
