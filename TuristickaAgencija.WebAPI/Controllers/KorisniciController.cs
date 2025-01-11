@@ -15,6 +15,7 @@ namespace TuristickaAgencija.WebAPI.Controllers
    
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class KorisniciController : ControllerBase
     {
         
@@ -72,8 +73,5 @@ namespace TuristickaAgencija.WebAPI.Controllers
         {
             _korisniciService.Delete(id);
         }
-
-
-
     }
 }
