@@ -386,3 +386,13 @@ FodyWeavers.xsd
 # JetBrains Rider
 .idea/
 *.sln.iml
+
+#Ignore .dll files
+*.dll
+
+#Ignore build folderss
+**/bin/
+**/obj/
+
+#Ignore cache folders and files
+*cache*
