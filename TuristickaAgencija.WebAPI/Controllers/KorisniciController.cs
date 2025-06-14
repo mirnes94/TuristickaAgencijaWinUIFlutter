@@ -1,18 +1,13 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
 using TuristickaAgencija.Services.Korisnici;
 
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
-   
+
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -53,6 +48,7 @@ namespace TuristickaAgencija.WebAPI.Controllers
         {
             return _korisniciService.Update(id, request);
         }
+
         [HttpGet]
         [Route("Authenticiraj/{username},{password}")]
         public Model.Korisnici Authenticiraj(string username, string password)
