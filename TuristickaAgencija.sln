@@ -8,8 +8,11 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TuristickaAgencija.Model", "TuristickaAgencija.Model\TuristickaAgencija.Model.csproj", "{7205C828-E6E9-4469-8BF8-0FBE10D9A769}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TuristickaAgencija.WinUI", "TuristickaAgencija.WinUI\TuristickaAgencija.WinUI.csproj", "{1E7B7A22-14BF-492C-A4D3-F4CBD2F3272D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B17CDE43-9975-4C1F-9860-31343AB0C730} = {B17CDE43-9975-4C1F-9860-31343AB0C730}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TuristickaAgencija.Services", "TuristickaAgencija.Services\TuristickaAgencija.Services.csproj", "{B17CDE43-9975-4C1F-9860-31343AB0C730}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TuristickaAgencija.Services", "TuristickaAgencija.Services\TuristickaAgencija.Services.csproj", "{B17CDE43-9975-4C1F-9860-31343AB0C730}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

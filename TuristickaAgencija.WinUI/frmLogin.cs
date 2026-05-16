@@ -26,7 +26,8 @@ namespace TuristickaAgencija.WinUI
             var url = $"{Properties.Settings.Default.APIUrl}/Korisnici/Authenticiraj/{APIService.Username},{APIService.Password}";
 
 
-            if (CheckConnection(url)){
+            if (CheckConnection(url, APIService.Username, APIService.Password))
+            {
                 try
                 {
 
@@ -66,22 +67,42 @@ namespace TuristickaAgencija.WinUI
 
         }
 
-        private bool CheckConnection(String URL)
+        private bool CheckConnection(string URL, string username, string password)
         {
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(URL);
                 request.Timeout = 5000;
-                request.Credentials = CredentialCache.DefaultNetworkCredentials;
+
+                // Priprema Basic Auth headera
+                string credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}:{password}"));
+                request.Headers[HttpRequestHeader.Authorization] = "Basic " + credentials;
+
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
-                if (response.StatusCode == HttpStatusCode.BadGateway || response.StatusCode == HttpStatusCode.BadRequest || response.StatusCode == HttpStatusCode.GatewayTimeout)
+                if (response.StatusCode == HttpStatusCode.BadGateway ||
+                    response.StatusCode == HttpStatusCode.BadRequest ||
+                    response.StatusCode == HttpStatusCode.GatewayTimeout)
+                {
                     return false;
+                }
                 else
+                {
                     return true;
+                }
             }
-            catch
+            catch (WebException webEx)
             {
+                Console.WriteLine($"WebException: {webEx.Message}");
+                if (webEx.Response is HttpWebResponse errorResponse)
+                {
+                    Console.WriteLine($"Status code: {(int)errorResponse.StatusCode} - {errorResponse.StatusCode}");
+                }
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception: {ex.Message}");
                 return false;
             }
         }
