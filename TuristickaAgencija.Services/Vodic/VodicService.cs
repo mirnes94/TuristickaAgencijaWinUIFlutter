@@ -1,78 +1,52 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Vodic
 {
-    public class VodicService : IVodicService
+    public class VodicService
+        : BaseCRUDService<Model.Vodic, Database.Vodic, VodicSearchRequest, VodicInsertUpdateRequest, VodicInsertUpdateRequest>, IVodicService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-
-        public VodicService(TuristickaAgencijaContext context, IMapper mapper)
+        public VodicService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
-        public virtual IList<Model.Vodic> Get(VodicSearchRequest request)
-        {
-            var query = _context.Vodic.AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(request?.Ime))
+        protected override IQueryable<Database.Vodic> AddFilter(IQueryable<Database.Vodic> query, VodicSearchRequest search)
+        {
+            if (!string.IsNullOrWhiteSpace(search.Ime))
             {
-                query = query.Where(x => x.Ime.StartsWith(request.Ime));
+                query = query.Where(x => x.Ime.StartsWith(search.Ime));
+            }
+            if (!string.IsNullOrWhiteSpace(search.Prezime))
+            {
+                query = query.Where(x => x.Prezime.StartsWith(search.Prezime));
             }
 
-            if (!string.IsNullOrWhiteSpace(request?.Prezime))
+            return query;
+        }
+
+        protected override IQueryable<Database.Vodic> AddOrder(IQueryable<Database.Vodic> query)
+        {
+            return query.OrderBy(x => x.Prezime).ThenBy(x => x.Ime);
+        }
+
+        protected override async Task BeforeInsertAsync(VodicInsertUpdateRequest request)
+        {
+            if (await Context.Vodic.AnyAsync(x => x.Jmbg == request.Jmbg))
             {
-                query = query.Where(x => x.Prezime.StartsWith(request.Prezime));
+                throw new UserException("Vodič sa tim JMBG-om već postoji.");
             }
-
-
-           
-           
-            var list = query.ToList();
-
-
-           
-           
-            
-            return _mapper.Map<IList<Model.Vodic>>(list);
         }
 
-        public Model.Vodic GetById(int id)
+        protected override async Task BeforeUpdateAsync(Database.Vodic entity, VodicInsertUpdateRequest request)
         {
-            var entity = _context.Vodic.Find(id);
-
-            return _mapper.Map<Model.Vodic>(entity);
-        }
-
-        public Model.Vodic Insert(VodicInsertUpdateRequest request)
-        {
-            var entity = _mapper.Map<Database.Vodic>(request);
-
-            _context.Vodic.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Vodic>(entity);
-        }
-
-        public Model.Vodic Update(int id, VodicInsertUpdateRequest request)
-        {
-            var entity = _context.Vodic.Find(id);
-
-            _context.Vodic.Attach(entity);
-            _context.Vodic.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Vodic>(entity);
+            if (await Context.Vodic.AnyAsync(x => x.Jmbg == request.Jmbg && x.Id != entity.Id))
+            {
+                throw new UserException("Vodič sa tim JMBG-om već postoji.");
+            }
         }
     }
 }

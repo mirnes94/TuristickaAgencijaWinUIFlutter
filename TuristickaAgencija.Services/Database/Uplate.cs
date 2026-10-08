@@ -15,6 +15,9 @@ namespace TuristickaAgencija.Services.Database
         public int RezervacijaId { get; set; }
         public int KorisnikId { get; set; }
 
+        /// <summary>Stripe PaymentIntent za online uplate (null = uplata u poslovnici).</summary>
+        public string StripePaymentIntentId { get; set; }
+
         public virtual Rezervacija Rezervacija { get; set; }
         public virtual Korisnici Korisnik { get; set; }
     }

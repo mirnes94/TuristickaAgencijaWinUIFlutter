@@ -1,18 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Rezervacija
 {
     public interface IRezervacijaService
+        : ICRUDService<Model.Rezervacija, RezervacijaSearchRequest, RezervacijaInsertUpdateRequest, RezervacijaInsertUpdateRequest>
     {
-        List<Model.Rezervacija> Get(RezervacijaSearchRequest request);
-        Model.Rezervacija GetById(int id);
-        Model.Rezervacija Insert(RezervacijaInsertUpdateRequest request);
-        Model.Rezervacija Update(int id, RezervacijaInsertUpdateRequest request);
-
-        public void Delete(int id);
     }
 }

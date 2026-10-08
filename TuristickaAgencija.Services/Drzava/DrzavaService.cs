@@ -1,66 +1,48 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Drzava
 {
-    
-    public class DrzavaService : IDrzavaService
+    public class DrzavaService
+        : BaseCRUDService<Model.Drzava, Database.Drzava, DrzavaSearchRequest, DrzavaInsertUpdateRequest, DrzavaInsertUpdateRequest>, IDrzavaService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public DrzavaService(TuristickaAgencijaContext context, IMapper mapper)
+        public DrzavaService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
 
-
-
-        public List<Model.Drzava> Get()
+        protected override IQueryable<Database.Drzava> AddFilter(IQueryable<Database.Drzava> query, DrzavaSearchRequest search)
         {
-            var list = _context.Drzava.ToList();
+            if (!string.IsNullOrWhiteSpace(search.Naziv))
+            {
+                query = query.Where(x => x.Naziv.Contains(search.Naziv));
+            }
 
-            return _mapper.Map<List<Model.Drzava>>(list);
-
+            return query;
         }
 
-        public Model.Drzava GetById(int id)
+        protected override IQueryable<Database.Drzava> AddOrder(IQueryable<Database.Drzava> query)
         {
-            var entity = _context.Drzava.Find(id);
-
-            return _mapper.Map<Model.Drzava>(entity);
-
+            return query.OrderBy(x => x.Naziv);
         }
 
-        public Model.Drzava Insert(DrzavaInsertUpdateRequest request)
+        protected override async Task BeforeInsertAsync(DrzavaInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.Drzava>(request);
-
-            _context.Drzava.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Drzava>(entity);
+            if (await Context.Drzava.AnyAsync(x => x.Naziv == request.Naziv))
+            {
+                throw new UserException("Država sa tim nazivom već postoji.");
+            }
         }
 
-        public Model.Drzava Update(int id, DrzavaInsertUpdateRequest request)
+        protected override async Task BeforeUpdateAsync(Database.Drzava entity, DrzavaInsertUpdateRequest request)
         {
-            var entity = _context.Drzava.Find(id);
-
-            _context.Drzava.Attach(entity);
-            _context.Drzava.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Drzava>(entity);
+            if (await Context.Drzava.AnyAsync(x => x.Naziv == request.Naziv && x.Id != entity.Id))
+            {
+                throw new UserException("Država sa tim nazivom već postoji.");
+            }
         }
-
     }
 }

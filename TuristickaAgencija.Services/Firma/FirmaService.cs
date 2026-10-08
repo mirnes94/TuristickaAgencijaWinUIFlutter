@@ -1,59 +1,41 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Firma
 {
-  
-    public class FirmaService : IFirmaService
+    public class FirmaService
+        : BaseCRUDService<Model.Firma, Database.Firma, FirmaSearchRequest, FirmaInsertUpdateRequest, FirmaInsertUpdateRequest>, IFirmaService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public FirmaService(TuristickaAgencijaContext context, IMapper mapper)
+        public FirmaService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
-        }
-        public List<Model.Firma> Get()
-        {
-            var list = _context.Firma.ToList();
-
-            return _mapper.Map<List<Model.Firma>>(list);
         }
 
-        public Model.Firma GetById(int id)
+        protected override IQueryable<Database.Firma> AddInclude(IQueryable<Database.Firma> query)
         {
-            var entity = _context.Firma.Find(id);
-
-            return _mapper.Map<Model.Firma>(entity);
+            return query.Include(x => x.Grad);
         }
 
-        public Model.Firma Insert(FirmaInsertUpdateRequest request)
+        protected override IQueryable<Database.Firma> AddFilter(IQueryable<Database.Firma> query, FirmaSearchRequest search)
         {
-            var entity = _mapper.Map<Database.Firma>(request);
+            if (!string.IsNullOrWhiteSpace(search.Naziv))
+            {
+                query = query.Where(x => x.Naziv.Contains(search.Naziv));
+            }
+            if (search.GradId.HasValue)
+            {
+                query = query.Where(x => x.GradId == search.GradId);
+            }
 
-            _context.Firma.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Firma>(entity);
+            return query;
         }
 
-        public Model.Firma Update(int id, FirmaInsertUpdateRequest request)
+        protected override IQueryable<Database.Firma> AddOrder(IQueryable<Database.Firma> query)
         {
-            var entity = _context.Firma.Find(id);
-
-            _context.Firma.Attach(entity);
-            _context.Firma.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Firma>(entity);
+            return query.OrderBy(x => x.Naziv);
         }
     }
 }

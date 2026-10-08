@@ -1,50 +1,15 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
 using TuristickaAgencija.Services.Ocjene;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    [Authorize]
-    public class OcjeneController : ControllerBase
+    public class OcjeneController : KorisnikovCRUDController<Model.Ocjene, OcjeneSearchRequest, OcjeneInsertUpdateRequest>
     {
-        private readonly IOcjeneService _ocjeneService;
-        public OcjeneController(IOcjeneService ocjeneService)
+        public OcjeneController(IOcjeneService service) : base(service)
         {
-            _ocjeneService = ocjeneService;
-        }
-      
-        [HttpGet]
-        public ActionResult<List<Model.Ocjene>> Get([FromQuery] OcjeneSearchRequest request)
-        {
-            return _ocjeneService.Get(request);
-
-        }
-       
-        [HttpGet("{id}")]
-        public Model.Ocjene GetById(int id)
-        {
-            return _ocjeneService.GetById(id);
-
         }
 
-        [HttpPost]
-        public Model.Ocjene Insert(OcjeneInsertUpdateRequest request)
-        {
-            return _ocjeneService.Insert(request);
-        }
-       
-        [HttpPut("{id}")]
-        public Model.Ocjene Update(int id, OcjeneInsertUpdateRequest request)
-        {
-            return _ocjeneService.Update(id, request);
-        }
+        // komentare i ocjene putovanja vide svi korisnici (prikaz na detaljima putovanja)
+        protected override bool OgraniciPregledNaVlasnika => false;
     }
 }

@@ -1,72 +1,48 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Uloge
 {
-  
-    public class UlogeService : IUlogeService
+    public class UlogeService
+        : BaseCRUDService<Model.Uloge, Database.Uloge, UlogeSearchRequest, UlogeInsertUpdateRequest, UlogeInsertUpdateRequest>, IUlogeService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public UlogeService(TuristickaAgencijaContext context, IMapper mapper)
+        public UlogeService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
-       
-        public List<Model.Uloge> Get()
-        {
-            List<Model.Uloge> result = new List<Model.Uloge>();
-            var list = _context.Uloge.ToList();
 
-           
-            foreach (var item in list)
+        protected override IQueryable<Database.Uloge> AddFilter(IQueryable<Database.Uloge> query, UlogeSearchRequest search)
+        {
+            if (!string.IsNullOrWhiteSpace(search.Naziv))
             {
-                Model.Uloge role = new Model.Uloge();
-                role.Naziv = item.Naziv;
-                role.Opis = item.Opis;
-                role.Id= item.Id;
-
-                result.Add(role);
+                query = query.Where(x => x.Naziv.Contains(search.Naziv));
             }
-            //return _mapper.Map<List<Model.Uloge>>(list);
-            return result;
+
+            return query;
         }
 
-        public Model.Uloge GetById(int id)
+        protected override IQueryable<Database.Uloge> AddOrder(IQueryable<Database.Uloge> query)
         {
-            var entity = _context.Uloge.Find(id);
-
-            return _mapper.Map<Model.Uloge>(entity);
+            return query.OrderBy(x => x.Naziv);
         }
 
-        public Model.Uloge Insert(UlogeInsertUpdateRequest request)
+        protected override async Task BeforeInsertAsync(UlogeInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.Uloge>(request);
-
-            _context.Uloge.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Uloge>(entity);
+            if (await Context.Uloge.AnyAsync(x => x.Naziv == request.Naziv))
+            {
+                throw new UserException("Uloga sa tim nazivom već postoji.");
+            }
         }
 
-        public Model.Uloge Update(int id, UlogeInsertUpdateRequest request)
+        protected override async Task BeforeUpdateAsync(Database.Uloge entity, UlogeInsertUpdateRequest request)
         {
-            var entity = _context.Uloge.Find(id);
-
-            _context.Uloge.Attach(entity);
-            _context.Uloge.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Uloge>(entity);
+            if (await Context.Uloge.AnyAsync(x => x.Naziv == request.Naziv && x.Id != entity.Id))
+            {
+                throw new UserException("Uloga sa tim nazivom već postoji.");
+            }
         }
     }
 }

@@ -1,59 +1,35 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Placanje;
 using TuristickaAgencija.Services.Uplate;
+using TuristickaAgencija.WebAPI.Security;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    [Authorize]
-    public class UplateController : ControllerBase
+    public class UplateController : KorisnikovCRUDController<Model.Uplate, UplateSearchRequest, UplateInsertUpdateRequest>
     {
+        private readonly IPlacanjeService _placanjeService;
 
-
-        private readonly IUplateService _uplateService;
-        public UplateController(IUplateService uplateService)
+        public UplateController(IUplateService service, IPlacanjeService placanjeService) : base(service)
         {
-            _uplateService = uplateService;
-        }
-        
-
-        [HttpGet]
-        public ActionResult<List<Model.Uplate>> Get([FromQuery] UplateSearchRequest request)
-        {
-            return _uplateService.Get(request);
-
-        }
-        [HttpGet("GetByMonth/{mjesec}")]
-        public ActionResult<List<Model.Uplate>> GetByMonth(int mjesec)
-        {
-            return _uplateService.GetByMonth(mjesec);
-
-        }
-       
-        [HttpGet("{id}")]
-        public Model.Uplate GetById(int id)
-        {
-            return _uplateService.GetById(id);
-
+            _placanjeService = placanjeService;
         }
 
-        [HttpPost]
-        public Model.Uplate Insert(UplateInsertUpdateRequest request)
+        /// <summary>
+        /// Online placanje (mobilna aplikacija): Stripe PaymentIntent se kreira na serveru,
+        /// pa tajni Stripe kljuc ostaje u konfiguraciji API-ja (.env), a ne u aplikaciji.
+        /// </summary>
+        /// <summary>Klijent moze evidentirati samo uplatu koja je stvarno placena preko Stripe-a.</summary>
+        protected override async Task ProvjeriUnosKlijentaAsync(UplateInsertUpdateRequest request)
         {
-            return _uplateService.Insert(request);
+            await _placanjeService.ProvjeriPlacanjeAsync(request.StripePaymentIntentId, request.Iznos, request.KorisnikId);
+            request.Datum = DateTime.Now;
         }
-     
-        [HttpPut("{id}")]
-        public Model.Uplate Update(int id, UplateInsertUpdateRequest request)
+
+        [HttpPost("PaymentIntent")]
+        public Task<PaymentIntentOdgovor> PaymentIntent([FromBody] PaymentIntentRequest request)
         {
-            return _uplateService.Update(id, request);
+            return _placanjeService.KreirajPaymentIntentAsync(request, User.KorisnikId(), User.JeAdmin());
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using System.ComponentModel.DataAnnotations;
 
 namespace TuristickaAgencija.Model.Request
 {
@@ -9,6 +9,6 @@ namespace TuristickaAgencija.Model.Request
         public string NazivPutovanja { get; set; }
         public int? SmjestajId { get; set; }
         public int? GradId { get; set; }
-
+        public bool? SamoBuduca { get; set; }
     }
 }

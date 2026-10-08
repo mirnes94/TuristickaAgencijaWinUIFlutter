@@ -1,0 +1,15 @@
+**/.dockerignore
+**/.env
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/*.*proj.user
+**/bin
+**/obj
+**/docker-compose*
+**/node_modules
+UI
+TuristickaAgencija.WinUI
+README.md
+*.zip

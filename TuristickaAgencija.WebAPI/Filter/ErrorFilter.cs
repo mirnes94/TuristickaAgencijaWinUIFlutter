@@ -1,33 +1,57 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Threading.Tasks;
-using TuristickaAgencija.WebAPI.Exceptions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.WebAPI.Filter
 {
-    public class ErrorFilter:ExceptionFilterAttribute
+    /// <summary>
+    /// Pretvara izuzetke u odgovore oblika { "errors": { "ERROR": ["poruka"] } }
+    /// (isti oblik kao automatska validacija modela, pa UI parsira greske na jedan nacin).
+    /// </summary>
+    public class ErrorFilter : ExceptionFilterAttribute
     {
+        private readonly ILogger<ErrorFilter> _logger;
+
+        public ErrorFilter(ILogger<ErrorFilter> logger)
+        {
+            _logger = logger;
+        }
+
         public override void OnException(ExceptionContext context)
         {
+            HttpStatusCode status;
+            string poruka;
 
-            if (context.Exception is UserException)
+            switch (context.Exception)
             {
-                context.ModelState.AddModelError("ERROR", context.Exception.Message);
-                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                case NotFoundException ex:
+                    status = HttpStatusCode.NotFound;
+                    poruka = ex.Message;
+                    break;
+                case ForbiddenException ex:
+                    status = HttpStatusCode.Forbidden;
+                    poruka = ex.Message;
+                    break;
+                case UserException ex:
+                    status = HttpStatusCode.BadRequest;
+                    poruka = ex.Message;
+                    break;
+                default:
+                    _logger.LogError(context.Exception, "Neočekivana greška");
+                    status = HttpStatusCode.InternalServerError;
+                    poruka = "Greška na serveru. Pokušajte ponovo.";
+                    break;
             }
-            else
+
+            context.Result = new JsonResult(new
             {
-                context.ModelState.AddModelError("ERROR", "Greška na serveru");
-                context.HttpContext.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-            }
-
-            var list = context.ModelState.Where(x => x.Value.Errors.Count > 0).ToDictionary(x => x.Key, y => y.Value.Errors.Select(z => z.ErrorMessage));
-
-            context.Result = new JsonResult(list);
+                errors = new Dictionary<string, string[]> { { "ERROR", new[] { poruka } } }
+            })
+            {
+                StatusCode = (int)status
+            };
+            context.ExceptionHandled = true;
         }
     }
 }

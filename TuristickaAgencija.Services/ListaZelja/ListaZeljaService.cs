@@ -1,75 +1,48 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.ListaZelja
 {
-    public class ListaZeljaService : IListaZeljaService
+    public class ListaZeljaService
+        : BaseCRUDService<Model.ListaZelja, Database.ListaZelja, ListaZeljaSearchRequest, ListaZeljaInsertUpdateRequest, ListaZeljaInsertUpdateRequest>, IListaZeljaService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-
-        public ListaZeljaService(TuristickaAgencijaContext context, IMapper mapper)
+        public ListaZeljaService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
-        }
-        public void Delete(int id)
-        {
-            var entity = _context.ListaZelja.Find(id);
-            _context.ListaZelja.Remove(entity);
-            _context.SaveChanges();
         }
 
-        public List<Model.ListaZelja> Get(ListaZeljaSearchRequest request)
+        protected override IQueryable<Database.ListaZelja> AddInclude(IQueryable<Database.ListaZelja> query)
         {
-            var query = _context.Set<Database.ListaZelja>().AsQueryable();
-            if (request?.PutovanjeId.HasValue == true)
+            return query.Include(x => x.Korisnik).Include(x => x.Putovanje);
+        }
+
+        protected override IQueryable<Database.ListaZelja> AddFilter(IQueryable<Database.ListaZelja> query, ListaZeljaSearchRequest search)
+        {
+            if (search.PutovanjeId.HasValue)
             {
-                query = query.Where(x => x.PutovanjeId == request.PutovanjeId);
+                query = query.Where(x => x.PutovanjeId == search.PutovanjeId);
             }
-            if (request?.KorisnikId.HasValue == true)
+            if (search.KorisnikId.HasValue)
             {
-                query = query.Where(x => x.KorisnikId == request.KorisnikId);
+                query = query.Where(x => x.KorisnikId == search.KorisnikId);
             }
-            var list = query.ToList();
-
-            return _mapper.Map<List<Model.ListaZelja>>(list);
+            return query;
         }
 
-        public Model.ListaZelja GetById(int id)
+        protected override IQueryable<Database.ListaZelja> AddOrder(IQueryable<Database.ListaZelja> query)
         {
-            var entity = _context.ListaZelja.Find(id);
-
-            return _mapper.Map<Model.ListaZelja>(entity);
+            return query.OrderBy(x => x.Id);
         }
 
-        public Model.ListaZelja Insert(ListaZeljaInsertUpdateRequest request)
+        protected override async Task BeforeInsertAsync(ListaZeljaInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.ListaZelja>(request);
-
-            _context.ListaZelja.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.ListaZelja>(entity);
-        }
-
-        public Model.ListaZelja Update(int id, ListaZeljaInsertUpdateRequest request)
-        {
-            var entity = _context.ListaZelja.Find(id);
-
-            _context.ListaZelja.Attach(entity);
-            _context.ListaZelja.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.ListaZelja>(entity);
+            if (await Context.ListaZelja.AnyAsync(x => x.KorisnikId == request.KorisnikId && x.PutovanjeId == request.PutovanjeId))
+            {
+                throw new UserException("Putovanje je već na listi želja.");
+            }
         }
     }
 }

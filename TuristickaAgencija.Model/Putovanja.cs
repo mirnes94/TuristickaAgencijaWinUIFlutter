@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace TuristickaAgencija.Model
 {
@@ -18,6 +17,13 @@ namespace TuristickaAgencija.Model
         public int PrevozId { get; set; }
         public int SmjestajId { get; set; }
 
-        public ICollection<VodiciPutovanja> VodiciPutovanja { get; set; }
+        public string GradNaziv { get; set; }
+        public string PrevozNaziv { get; set; }
+        public string SmjestajNaziv { get; set; }
+        public double ProsjecnaOcjena { get; set; }
+        public int BrojOcjena { get; set; }
+
+        public List<int> Vodici { get; set; } = new List<int>();
+        public List<string> VodiciImena { get; set; } = new List<string>();
     }
 }

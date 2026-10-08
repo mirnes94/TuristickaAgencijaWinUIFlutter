@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace TuristickaAgencija.Model
 {
@@ -9,5 +8,6 @@ namespace TuristickaAgencija.Model
         public int Id { get; set; }
         public string NazivGrada { get; set; }
         public int DrzavaId { get; set; }
+        public string DrzavaNaziv { get; set; }
     }
 }

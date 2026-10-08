@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Ocjene
 {
     public interface IOcjeneService
+        : ICRUDService<Model.Ocjene, OcjeneSearchRequest, OcjeneInsertUpdateRequest, OcjeneInsertUpdateRequest>
     {
-        List<Model.Ocjene> Get(OcjeneSearchRequest request);
-        Model.Ocjene GetById(int id);
-        Model.Ocjene Insert(OcjeneInsertUpdateRequest request);
-        Model.Ocjene Update(int id, OcjeneInsertUpdateRequest request);
     }
 }

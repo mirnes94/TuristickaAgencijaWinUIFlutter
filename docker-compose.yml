@@ -1,0 +1,83 @@
+# Pokretanje: docker compose up --build
+#   API (Swagger)      http://localhost:5000/swagger
+#   RabbitMQ UI        http://localhost:15672   (admin / admin)
+#   Mailpit (emailovi) http://localhost:8025
+#   SQL Server         localhost,1401           (sa / vidi .env)
+
+services:
+  turistickaagencija-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SQL_SA_PASSWORD}
+      - MSSQL_PID=Developer
+    ports:
+      - "1401:1433"
+    volumes:
+      - sql-data:/var/opt/mssql
+    networks:
+      - turistickaagencijanet
+
+  turistickaagencija-rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - turistickaagencijanet
+
+  turistickaagencija-mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - turistickaagencijanet
+
+  turistickaagencija-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      turistickaagencija-sql:
+        condition: service_started
+      turistickaagencija-rabbitmq:
+        condition: service_healthy
+    networks:
+      - turistickaagencijanet
+
+  turistickaagencija-subscriber:
+    build:
+      context: .
+      dockerfile: TuristickaAgencija.Subscriber/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      turistickaagencija-rabbitmq:
+        condition: service_healthy
+      turistickaagencija-mailpit:
+        condition: service_started
+    networks:
+      - turistickaagencijanet
+
+volumes:
+  sql-data:
+
+networks:
+  turistickaagencijanet:
+    driver: bridge

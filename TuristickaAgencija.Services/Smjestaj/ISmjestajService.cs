@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Smjestaj
 {
-    public interface ISmjestajService
+    public interface ISmjestajService : ICRUDService<Model.Smjestaj, SmjestajSearchRequest, SmjestajInsertUpdateRequest, SmjestajInsertUpdateRequest>
     {
-        List<Model.Smjestaj> Get();
-        Model.Smjestaj GetById(int id);
-        Model.Smjestaj Insert(SmjestajInsertUpdateRequest request);
-        Model.Smjestaj Update(int id, SmjestajInsertUpdateRequest request);
     }
 }

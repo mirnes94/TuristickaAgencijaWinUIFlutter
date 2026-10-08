@@ -12,10 +12,9 @@ namespace TuristickaAgencija.Model
         public string Telefon { get; set; }
         public string KorisnickoIme { get; set; }
         public bool Status { get; set; }
-        
-        public string LozinkaHash { get; set; }
-        public string LozinkaSalt { get; set; }
 
-        public List<KorisniciUloge> KorisniciUloge { get; set; }
+        // Lozinka (hash/salt) se namjerno NE vraca klijentima.
+        public List<KorisniciUloge> KorisniciUloge { get; set; } = new List<KorisniciUloge>();
+        public List<string> Uloge { get; set; } = new List<string>();
     }
 }

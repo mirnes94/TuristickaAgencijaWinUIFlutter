@@ -1,73 +1,89 @@
-﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
 using TuristickaAgencija.Services.Korisnici;
 
 namespace TuristickaAgencija.WebAPI.Security
 {
     public class BasicAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
-        private readonly IKorisniciService _userService;
+        public const string SchemeName = "BasicAuthentication";
+
+        private readonly IKorisniciService _korisniciService;
 
         public BasicAuthenticationHandler(
             IOptionsMonitor<AuthenticationSchemeOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
-            ISystemClock clock,
-            IKorisniciService userService)
-            : base(options, logger, encoder, clock)
+            IKorisniciService korisniciService)
+            : base(options, logger, encoder)
         {
-            _userService = userService;
+            _korisniciService = korisniciService;
         }
 
         protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             if (!Request.Headers.ContainsKey("Authorization"))
-                return  AuthenticateResult.Fail("Missing Authorization Header");
+            {
+                return AuthenticateResult.NoResult();
+            }
 
-            Model.Korisnici user = null;
+            string username;
+            string password;
             try
             {
                 var authHeader = AuthenticationHeaderValue.Parse(Request.Headers["Authorization"]);
-                var credentialBytes = Convert.FromBase64String(authHeader.Parameter);
-                var credentials = Encoding.UTF8.GetString(credentialBytes).Split(':');
-                var username = credentials[0];
-                var password = credentials[1];
-                user = _userService.Authenticiraj(username, password);
+                if (!"Basic".Equals(authHeader.Scheme, StringComparison.OrdinalIgnoreCase) || string.IsNullOrEmpty(authHeader.Parameter))
+                {
+                    return AuthenticateResult.Fail("Neispravno Authorization zaglavlje.");
+                }
+
+                var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authHeader.Parameter));
+                var separator = credentials.IndexOf(':');
+                if (separator < 0)
+                {
+                    return AuthenticateResult.Fail("Neispravno Authorization zaglavlje.");
+                }
+
+                username = credentials[..separator];
+                password = credentials[(separator + 1)..];
             }
             catch
             {
-                return AuthenticateResult.Fail("Invalid Authorization Header");
+                return AuthenticateResult.Fail("Neispravno Authorization zaglavlje.");
             }
 
+            var user = await _korisniciService.AuthenticateAsync(username, password);
             if (user == null)
-                return AuthenticateResult.Fail("Invalid Username or Password");
-            
-            var claims = new List<Claim> {
-                new Claim(ClaimTypes.NameIdentifier, user.KorisnickoIme),
-                new Claim(ClaimTypes.Name, user.Ime),
-
-               
-            };
-            
-            foreach (var role in user.KorisniciUloge)
             {
-                claims.Add(new Claim(ClaimTypes.Role, role.Uloga.Naziv));
+                return AuthenticateResult.Fail("Pogrešno korisničko ime ili lozinka.");
             }
-            
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.KorisnickoIme),
+                new Claim(ClaimTypes.GivenName, user.Ime ?? string.Empty)
+            };
+            claims.AddRange(user.Uloge.Select(uloga => new Claim(ClaimTypes.Role, uloga)));
+
             var identity = new ClaimsIdentity(claims, Scheme.Name);
             var principal = new ClaimsPrincipal(identity);
-            var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
-            return AuthenticateResult.Success(ticket);
+            return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name));
         }
+    }
+
+    public static class ClaimsPrincipalExtensions
+    {
+        public static int KorisnikId(this ClaimsPrincipal user)
+        {
+            var value = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            return int.TryParse(value, out var id) ? id : 0;
+        }
+
+        public static bool JeAdmin(this ClaimsPrincipal user) => user.IsInRole(Model.UlogeNazivi.Admin);
     }
 }

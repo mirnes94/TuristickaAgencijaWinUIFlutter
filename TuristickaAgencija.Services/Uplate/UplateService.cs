@@ -1,81 +1,117 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using TuristickaAgencija.Model;
+using TuristickaAgencija.Model.Messages;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
+using TuristickaAgencija.Services.Messaging;
 
 namespace TuristickaAgencija.Services.Uplate
 {
-    
-    public class UplateService : IUplateService
+    public class UplateService
+        : BaseCRUDService<Model.Uplate, Database.Uplate, UplateSearchRequest, UplateInsertUpdateRequest, UplateInsertUpdateRequest>,
+          IUplateService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public UplateService(TuristickaAgencijaContext context, IMapper mapper)
-        {
-            _context = context;
-            _mapper = mapper;
-        }
-        public List<Model.Uplate> Get(UplateSearchRequest request)
-        {
-            var query = _context.Uplate.AsQueryable();
+        private readonly IMessageProducer _messageProducer;
 
-            if (request?.KorisnikId.HasValue == true)
+        public UplateService(TuristickaAgencijaContext context, IMapper mapper, IMessageProducer messageProducer)
+            : base(context, mapper)
+        {
+            _messageProducer = messageProducer;
+        }
+
+        protected override IQueryable<Database.Uplate> AddInclude(IQueryable<Database.Uplate> query)
+        {
+            return query
+                .Include(x => x.Korisnik)
+                .Include(x => x.Rezervacija).ThenInclude(x => x.Putovanje);
+        }
+
+        protected override IQueryable<Database.Uplate> AddFilter(IQueryable<Database.Uplate> query, UplateSearchRequest search)
+        {
+            if (search.KorisnikId.HasValue)
             {
-                query = query.Where(x => x.KorisnikId == request.KorisnikId);
+                query = query.Where(x => x.KorisnikId == search.KorisnikId);
+            }
+            if (search.RezervacijaId.HasValue)
+            {
+                query = query.Where(x => x.RezervacijaId == search.RezervacijaId);
+            }
+            if (search.DatumOd.HasValue)
+            {
+                var od = search.DatumOd.Value.Date;
+                query = query.Where(x => x.Datum >= od);
+            }
+            if (search.DatumDo.HasValue)
+            {
+                var doDatuma = search.DatumDo.Value.Date.AddDays(1);
+                query = query.Where(x => x.Datum < doDatuma);
+            }
+            return query;
+        }
+
+        protected override IQueryable<Database.Uplate> AddOrder(IQueryable<Database.Uplate> query)
+        {
+            return query.OrderByDescending(x => x.Datum);
+        }
+
+        protected override async Task OnInsertingAsync(Database.Uplate entity, UplateInsertUpdateRequest request)
+        {
+            var rezervacija = await Context.Rezervacija
+                .Include(x => x.Putovanje)
+                .FirstOrDefaultAsync(x => x.Id == request.RezervacijaId);
+
+            if (rezervacija == null)
+            {
+                throw new UserException("Rezervacija ne postoji.");
+            }
+            if (rezervacija.Status == StatusRezervacije.Otkazano)
+            {
+                throw new UserException("Nije moguće uplatiti otkazanu rezervaciju.");
             }
 
-
-
-            var list = query.ToList();
-            return _mapper.Map<List<Model.Uplate>>(list);
-        }
-
-        public Model.Uplate GetById(int id)
-        {
-            var entity = _context.Uplate.Find(id);
-
-            return _mapper.Map<Model.Uplate>(entity);
-        }
-
-        public List<Model.Uplate> GetByMonth(int mjesec)
-        {
-             var uplate = _context.Uplate.ToList();
-
-           List<Database.Uplate> listaUplataZaMjesec = new List<Database.Uplate>();
-           foreach(var uplata in uplate)
+            if (entity.Datum == default)
             {
-                if(uplata.Datum.Month==mjesec)
-                listaUplataZaMjesec.Add(uplata);
+                entity.Datum = DateTime.Now;
+            }
+            if (entity.KorisnikId == 0 && rezervacija.KorisnikId.HasValue)
+            {
+                entity.KorisnikId = rezervacija.KorisnikId.Value;
+            }
+        }
+
+        protected override async Task AfterInsertAsync(Database.Uplate entity, UplateInsertUpdateRequest request)
+        {
+            var rezervacija = await Context.Rezervacija
+                .Include(x => x.Putovanje)
+                .Include(x => x.Korisnik)
+                .FirstAsync(x => x.Id == entity.RezervacijaId);
+
+            var uplaceno = await Context.Uplate.Where(x => x.RezervacijaId == rezervacija.Id).SumAsync(x => x.Iznos);
+            var ukupno = rezervacija.Putovanje != null ? (double)rezervacija.Putovanje.CijenaPutovanja * rezervacija.BrojOsoba : 0;
+
+            // Prema opisu sistema: rezervacija je "Potvrđena" tek kada je uplaćen cijeli iznos.
+            // tolerancija 0.005: CijenaPutovanja je float (npr. 75.3f = 75.3000030518), a uplate su zaokruzene na 2 decimale
+            if (ukupno > 0 && uplaceno + 0.005 >= ukupno && rezervacija.Status != StatusRezervacije.Potvrdjeno)
+            {
+                rezervacija.Status = StatusRezervacije.Potvrdjeno;
+                await Context.SaveChangesAsync();
             }
 
-            return _mapper.Map<List<Model.Uplate>>(listaUplataZaMjesec);
-        }
-
-        public Model.Uplate Insert(UplateInsertUpdateRequest request)
-        {
-            var entity = _mapper.Map<Database.Uplate>(request);
-
-            _context.Uplate.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Uplate>(entity);
-        }
-
-        public Model.Uplate Update(int id, UplateInsertUpdateRequest request)
-        {
-            var entity = _context.Uplate.Find(id);
-
-            _context.Uplate.Attach(entity);
-            _context.Uplate.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Uplate>(entity);
+            if (rezervacija.Korisnik != null && !string.IsNullOrWhiteSpace(rezervacija.Korisnik.Email))
+            {
+                _messageProducer.Posalji(new NotifikacijaPoruka
+                {
+                    Tip = TipNotifikacije.Uplata,
+                    PrimalacEmail = rezervacija.Korisnik.Email,
+                    PrimalacIme = rezervacija.Korisnik.Ime,
+                    Naslov = "Potvrda uplate - Turistička agencija",
+                    Sadrzaj = $"Evidentirana je uplata od {entity.Iznos:0.00} KM za rezervaciju \"{rezervacija.Ime}\". " +
+                              $"Ukupno uplaćeno: {uplaceno:0.00} / {ukupno:0.00} KM. Status rezervacije: {rezervacija.Status}."
+                });
+            }
         }
     }
 }

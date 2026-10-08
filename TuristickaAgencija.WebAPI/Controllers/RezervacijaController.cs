@@ -1,56 +1,35 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using TuristickaAgencija.Model;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Exceptions;
 using TuristickaAgencija.Services.Rezervacija;
 
 namespace TuristickaAgencija.WebAPI.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    [Authorize]
-    public class RezervacijaController : ControllerBase
+    public class RezervacijaController : KorisnikovCRUDController<Model.Rezervacija, RezervacijaSearchRequest, RezervacijaInsertUpdateRequest>
     {
-        private readonly IRezervacijaService _rezervacijaService;
-        public RezervacijaController(IRezervacijaService rezervacijaService)
+        public RezervacijaController(IRezervacijaService service) : base(service)
         {
-            _rezervacijaService = rezervacijaService;
-        }
-      
-        [HttpGet]
-        public ActionResult<List<Model.Rezervacija>> Get([FromQuery] RezervacijaSearchRequest request)
-        {
-            return _rezervacijaService.Get(request);
-
-        }
-      
-        [HttpGet("{id}")]
-        public Model.Rezervacija GetById(int id)
-        {
-            return _rezervacijaService.GetById(id);
-
-        }
-       
-        [HttpPost]
-        public Model.Rezervacija Insert(RezervacijaInsertUpdateRequest request)
-        {
-            return _rezervacijaService.Insert(request);
-        }
-       
-        [HttpPut("{id}")]
-        public Model.Rezervacija Update(int id, RezervacijaInsertUpdateRequest request)
-        {
-            return _rezervacijaService.Update(id, request);
         }
 
-        [HttpDelete("{id}")]
-        public void Delete(int id)
+        /// <summary>Nova rezervacija klijenta je uvijek "U obradi" dok se ne uplati cijeli iznos.</summary>
+        protected override Task ProvjeriUnosKlijentaAsync(RezervacijaInsertUpdateRequest request)
         {
-            _rezervacijaService.Delete(id);
+            request.Status = StatusRezervacije.UObradi;
+            return Task.CompletedTask;
+        }
+
+        /// <summary>Klijent ne moze sam potvrditi rezervaciju - moze je samo otkazati (status mijenja administrator ili uplata).</summary>
+        protected override void ProvjeriIzmjenuKlijenta(Model.Rezervacija postojeci, RezervacijaInsertUpdateRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Status))
+            {
+                request.Status = postojeci.Status;
+            }
+
+            if (request.Status != postojeci.Status && request.Status != StatusRezervacije.Otkazano)
+            {
+                throw new ForbiddenException("Rezervaciju možete samo otkazati.");
+            }
         }
     }
 }

@@ -1,183 +1,303 @@
-﻿using AutoMapper;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using TuristickaAgencija.Model;
+using TuristickaAgencija.Model.Messages;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
+using TuristickaAgencija.Services.Messaging;
+using TuristickaAgencija.Services.Security;
 
 namespace TuristickaAgencija.Services.Korisnici
 {
-  
-    public class KorisniciService : IKorisniciService
+    public class KorisniciService
+        : BaseCRUDService<Model.Korisnici, Database.Korisnici, KorisniciSearchRequest, KorisniciInsertUpdateRequest, KorisniciInsertUpdateRequest>,
+          IKorisniciService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public KorisniciService(TuristickaAgencijaContext context, IMapper mapper)
+        private readonly IMessageProducer _messageProducer;
+        private readonly VerifikacijaOptions _verifikacija;
+
+        public KorisniciService(
+            TuristickaAgencijaContext context,
+            IMapper mapper,
+            IMessageProducer messageProducer,
+            IOptions<VerifikacijaOptions> verifikacija) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
+            _messageProducer = messageProducer;
+            _verifikacija = verifikacija.Value;
         }
 
-      
-        public string GenerateSalt()
+        protected override IQueryable<Database.Korisnici> AddInclude(IQueryable<Database.Korisnici> query)
         {
-            var buf = new byte[16];
-            (new RNGCryptoServiceProvider()).GetBytes(buf);
-            return Convert.ToBase64String(buf);
+            return query.Include(x => x.KorisniciUloge).ThenInclude(x => x.Uloga);
         }
 
-
-
-        public string GenerateHash(string salt, string password)
+        protected override IQueryable<Database.Korisnici> AddFilter(IQueryable<Database.Korisnici> query, KorisniciSearchRequest search)
         {
-            byte[] src = Convert.FromBase64String(salt);
-            byte[] bytes = Encoding.Unicode.GetBytes(password);
-            byte[] dst = new byte[src.Length + bytes.Length];
-
-            System.Buffer.BlockCopy(src, 0, dst, 0, src.Length);
-            System.Buffer.BlockCopy(bytes, 0, dst, src.Length, bytes.Length);
-
-            HashAlgorithm algorithm = HashAlgorithm.Create("SHA1");
-            byte[] inArray = algorithm.ComputeHash(dst);
-            return Convert.ToBase64String(inArray);
-
-        }
-
-        public List<Model.Korisnici> Get(KorisniciSearchRequest request)
-        {
-            var query = _context.Korisnici.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(request?.Ime))
+            if (!string.IsNullOrWhiteSpace(search.Ime))
             {
-                query = query.Where(x => x.Ime.StartsWith(request.Ime));
+                query = query.Where(x => x.Ime.StartsWith(search.Ime));
+            }
+            if (!string.IsNullOrWhiteSpace(search.Prezime))
+            {
+                query = query.Where(x => x.Prezime.StartsWith(search.Prezime));
+            }
+            if (!string.IsNullOrWhiteSpace(search.KorisnickoIme))
+            {
+                query = query.Where(x => x.KorisnickoIme.Contains(search.KorisnickoIme));
+            }
+            if (search.UlogaId.HasValue)
+            {
+                query = query.Where(x => x.KorisniciUloge.Any(u => u.UlogaId == search.UlogaId));
+            }
+            return query;
+        }
+
+        protected override IQueryable<Database.Korisnici> AddOrder(IQueryable<Database.Korisnici> query)
+        {
+            return query.OrderBy(x => x.Prezime).ThenBy(x => x.Ime);
+        }
+
+        // ---------------- Kreiranje (administrator) ----------------
+
+        protected override async Task BeforeInsertAsync(KorisniciInsertUpdateRequest request)
+        {
+            ValidirajNovuLozinku(request, obavezna: true);
+            await ProvjeriJedinstvenostAsync(request, null);
+
+            if (request.Uloge == null || request.Uloge.Count == 0)
+            {
+                throw new UserException("Korisniku morate dodijeliti barem jednu ulogu.");
+            }
+        }
+
+        protected override Task OnInsertingAsync(Database.Korisnici entity, KorisniciInsertUpdateRequest request)
+        {
+            entity.LozinkaSalt = PasswordHasher.GenerateSalt();
+            entity.LozinkaHash = PasswordHasher.GenerateHash(entity.LozinkaSalt, request.Password);
+            entity.Status = request.Status;
+
+            foreach (var ulogaId in request.Uloge.Distinct())
+            {
+                entity.KorisniciUloge.Add(new Database.KorisniciUloge
+                {
+                    UlogaId = ulogaId,
+                    DatumIzmjene = DateTime.Now
+                });
             }
 
-            if (!string.IsNullOrWhiteSpace(request?.Prezime))
+            return Task.CompletedTask;
+        }
+
+        // ---------------- Izmjena (administrator) ----------------
+
+        protected override async Task BeforeUpdateAsync(Database.Korisnici entity, KorisniciInsertUpdateRequest request)
+        {
+            ValidirajNovuLozinku(request, obavezna: false);
+            await ProvjeriJedinstvenostAsync(request, entity.Id);
+
+            if (request.Uloge == null || request.Uloge.Count == 0)
             {
-                query = query.Where(x => x.Prezime.StartsWith(request.Prezime));
+                throw new UserException("Korisniku morate dodijeliti barem jednu ulogu.");
+            }
+        }
+
+        protected override async Task OnUpdatingAsync(Database.Korisnici entity, KorisniciInsertUpdateRequest request)
+        {
+            entity.Status = request.Status;
+            PostaviLozinkuAkoJeUnesena(entity, request);
+
+            var postojece = await Context.KorisniciUloge.Where(x => x.KorisnikId == entity.Id).ToListAsync();
+            var trazene = request.Uloge.Distinct().ToList();
+
+            Context.KorisniciUloge.RemoveRange(postojece.Where(x => !trazene.Contains(x.UlogaId)));
+
+            foreach (var ulogaId in trazene.Where(id => postojece.All(p => p.UlogaId != id)))
+            {
+                Context.KorisniciUloge.Add(new Database.KorisniciUloge
+                {
+                    KorisnikId = entity.Id,
+                    UlogaId = ulogaId,
+                    DatumIzmjene = DateTime.Now
+                });
+            }
+        }
+
+        protected override async Task BeforeDeleteAsync(Database.Korisnici entity)
+        {
+            if (await Context.Rezervacija.AnyAsync(x => x.KorisnikId == entity.Id)
+                || await Context.Uplate.AnyAsync(x => x.KorisnikId == entity.Id))
+            {
+                throw new UserException("Nalog nije moguće obrisati jer postoje rezervacije ili uplate vezane za njega. Kontaktirajte agenciju.");
             }
 
+            Context.Komentar.RemoveRange(await Context.Komentar.Where(x => x.KorisnikId == entity.Id).ToListAsync());
+            Context.Ocjene.RemoveRange(await Context.Ocjene.Where(x => x.KorisnikId == entity.Id).ToListAsync());
+            Context.Obavijesti.RemoveRange(await Context.Obavijesti.Where(x => x.KorisnikId == entity.Id).ToListAsync());
 
-            var list = query.ToList();
+            var uloge = await Context.KorisniciUloge.Where(x => x.KorisnikId == entity.Id).ToListAsync();
+            Context.KorisniciUloge.RemoveRange(uloge);
 
-           
-
-            return _mapper.Map<List<Model.Korisnici>>(list);
+            var listaZelja = await Context.ListaZelja.Where(x => x.KorisnikId == entity.Id).ToListAsync();
+            Context.ListaZelja.RemoveRange(listaZelja);
         }
 
-        public Model.Korisnici GetById(int id)
-        {
-            var entity = _context.Korisnici.Find(id);
+        // ---------------- Profil (korisnik sam sebi) ----------------
 
-            return _mapper.Map<Model.Korisnici>(entity);
+        public async Task<Model.Korisnici> UpdateProfilAsync(int id, KorisniciInsertUpdateRequest request)
+        {
+            var entity = await Context.Korisnici.FindAsync(id);
+            if (entity == null)
+            {
+                throw new NotFoundException("Korisnik ne postoji.");
+            }
+
+            ValidirajNovuLozinku(request, obavezna: false);
+            await ProvjeriJedinstvenostAsync(request, id);
+
+            if (!string.IsNullOrWhiteSpace(request.Password)
+                && !PasswordHasher.Verify(request.StaraLozinka, entity.LozinkaSalt, entity.LozinkaHash))
+            {
+                throw new UserException("Stara lozinka nije ispravna.");
+            }
+
+            entity.Ime = request.Ime;
+            entity.Prezime = request.Prezime;
+            entity.Email = request.Email;
+            entity.Telefon = request.Telefon;
+            entity.KorisnickoIme = request.KorisnickoIme;
+            PostaviLozinkuAkoJeUnesena(entity, request);
+
+            await Context.SaveChangesAsync();
+            return await GetByIdAsync(id);
         }
 
-        public Model.Korisnici Insert(KorisniciInsertUpdateRequest request)
+        // ---------------- Registracija i verifikacija ----------------
+
+        public async Task<Model.Korisnici> RegistrujAsync(KorisniciInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.Korisnici>(request);
+            ValidirajNovuLozinku(request, obavezna: true);
+            await ProvjeriJedinstvenostAsync(request, null);
+
+            var klijent = await Context.Uloge.FirstOrDefaultAsync(x => x.Naziv == UlogeNazivi.Klijent);
+            if (klijent == null)
+            {
+                throw new UserException("Uloga Klijent ne postoji u sistemu.");
+            }
+
+            var entity = Mapper.Map<Database.Korisnici>(request);
+            entity.LozinkaSalt = PasswordHasher.GenerateSalt();
+            entity.LozinkaHash = PasswordHasher.GenerateHash(entity.LozinkaSalt, request.Password);
+            entity.Status = false;
+            entity.KorisniciUloge.Add(new Database.KorisniciUloge { UlogaId = klijent.Id, DatumIzmjene = DateTime.Now });
+
+            Context.Korisnici.Add(entity);
+            await Context.SaveChangesAsync();
+
+            var token = _verifikacija.KreirajToken(entity.KorisnickoIme);
+            var link = $"{_verifikacija.ApiJavniUrl.TrimEnd('/')}/api/Korisnici/Potvrdi/{Uri.EscapeDataString(entity.KorisnickoIme)}?token={token}";
+
+            _messageProducer.Posalji(new NotifikacijaPoruka
+            {
+                Tip = TipNotifikacije.Registracija,
+                PrimalacEmail = entity.Email,
+                PrimalacIme = entity.Ime,
+                Naslov = "Potvrda registracije - Turistička agencija",
+                Sadrzaj = "Hvala na registraciji. Kliknite na link ispod kako biste aktivirali svoj nalog.",
+                Link = link
+            });
+
+            return await GetByIdAsync(entity.Id);
+        }
+
+        public async Task<bool> PotvrdiAsync(string username, string token)
+        {
+            if (!_verifikacija.ProvjeriToken(username, token))
+            {
+                return false;
+            }
+
+            var user = await Context.Korisnici.FirstOrDefaultAsync(x => x.KorisnickoIme == username);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.Status = true;
+            await Context.SaveChangesAsync();
+            return true;
+        }
+
+        // ---------------- Autentifikacija ----------------
+
+        public async Task<Model.Korisnici> AuthenticateAsync(string username, string password)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
+            {
+                return null;
+            }
+
+            var user = await Context.Korisnici
+                .AsNoTracking()
+                .Include(x => x.KorisniciUloge).ThenInclude(x => x.Uloga)
+                .FirstOrDefaultAsync(x => x.KorisnickoIme == username);
+
+            if (user == null || user.Status != true)
+            {
+                return null;
+            }
+
+            return PasswordHasher.Verify(password, user.LozinkaSalt, user.LozinkaHash)
+                ? Mapper.Map<Model.Korisnici>(user)
+                : null;
+        }
+
+        // ---------------- Pomocne metode ----------------
+
+        private static void ValidirajNovuLozinku(KorisniciInsertUpdateRequest request, bool obavezna)
+        {
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                if (obavezna)
+                {
+                    throw new UserException("Lozinka je obavezna.");
+                }
+                return;
+            }
+
+            if (request.Password.Length < 4)
+            {
+                throw new UserException("Lozinka mora imati najmanje 4 znaka.");
+            }
 
             if (request.Password != request.PasswordConfirmation)
             {
-                throw new Exception("Passwordi se ne slažu");
+                throw new UserException("Lozinka i potvrda lozinke se ne podudaraju.");
             }
-
-            entity.LozinkaSalt = GenerateSalt();
-            entity.LozinkaHash = GenerateHash(entity.LozinkaSalt,request.Password);
-          
-            _context.Korisnici.Add(entity);
-            _context.SaveChanges();
-
-            foreach (var uloga in request.Uloge)
-            {
-                Database.KorisniciUloge korisniciUloge = new Database.KorisniciUloge();
-                korisniciUloge.KorisnikId = entity.Id;
-                korisniciUloge.UlogaId = uloga;
-                korisniciUloge.DatumIzmjene = DateTime.Now;
-                _context.KorisniciUloge.Add(korisniciUloge);
-            }
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Korisnici>(entity);
         }
 
-        public Model.Korisnici Update(int id, KorisniciInsertUpdateRequest request)
+        private static void PostaviLozinkuAkoJeUnesena(Database.Korisnici entity, KorisniciInsertUpdateRequest request)
         {
-            
-            var entity = _context.Korisnici.Find(id);
-
             if (!string.IsNullOrWhiteSpace(request.Password))
             {
-                if (request.Password != request.PasswordConfirmation)
-                {
-                    throw new Exception("Passwordi se ne slažu");
-                }
+                entity.LozinkaSalt = PasswordHasher.GenerateSalt();
+                entity.LozinkaHash = PasswordHasher.GenerateHash(entity.LozinkaSalt, request.Password);
             }
+        }
 
-            foreach (var uloga in request.Uloge)
+        private async Task ProvjeriJedinstvenostAsync(KorisniciInsertUpdateRequest request, int? id)
+        {
+            if (await Context.Korisnici.AnyAsync(x => x.KorisnickoIme == request.KorisnickoIme && x.Id != id))
             {
-                _context.KorisniciUloge.Add(new Database.KorisniciUloge()
-                {
-                    KorisnikId = entity.Id,
-                    UlogaId = uloga,
-                    DatumIzmjene = DateTime.Now,
-            });
+                throw new UserException("Korisničko ime je zauzeto.");
             }
-            _context.Korisnici.Attach(entity);
-            _context.Korisnici.Update(entity);
 
-            _mapper.Map(request, entity);
-
-          
-           
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Korisnici>(entity);
-        }
-
-        public Model.Korisnici Authenticiraj(string username, string password)
-        {
-            var user = _context.Korisnici.Include(x=>x.KorisniciUloge).ThenInclude(x=>x.Uloga).FirstOrDefault(x => x.KorisnickoIme == username);
-
-            if (user != null)
+            if (await Context.Korisnici.AnyAsync(x => x.Email == request.Email && x.Id != id))
             {
-                var newHash = GenerateHash(user.LozinkaSalt, password);
-
-                if (newHash == user.LozinkaHash)
-                {
-                    return _mapper.Map<Model.Korisnici>(user);
-                }
+                throw new UserException("Email adresa je već registrovana.");
             }
-            return null;
-        }
-
-        public Model.Korisnici Potvrdi(string username)
-        {
-            var user = _context.Korisnici.Include(x => x.KorisniciUloge).ThenInclude(x => x.Uloga).FirstOrDefault(x => x.KorisnickoIme == username);
-
-            if (user != null)
-            {
-                    user.Status = true;
-                _context.SaveChanges(); 
-                    return _mapper.Map<Model.Korisnici>(user);
-                    
-            }
-            return null;
-        }
-        public List<Model.Korisnici> GetAllUsers()
-        {
-            var list = _context.Korisnici.ToList();
-
-            return _mapper.Map<List<Model.Korisnici>>(list);
-        }
-        public void Delete(int id)
-        {
-            var entity = _context.Korisnici.Find(id);
-            _context.Korisnici.Remove(entity);
-            _context.SaveChanges();
         }
     }
 }

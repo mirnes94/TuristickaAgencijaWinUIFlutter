@@ -1,17 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
-
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Firma
 {
-    public interface IFirmaService
+    public interface IFirmaService : ICRUDService<Model.Firma, FirmaSearchRequest, FirmaInsertUpdateRequest, FirmaInsertUpdateRequest>
     {
-        List<Model.Firma> Get();
-        Model.Firma GetById(int id);
-        Model.Firma Insert(FirmaInsertUpdateRequest request);
-        Model.Firma Update(int id, FirmaInsertUpdateRequest request);
     }
 }

@@ -1,59 +1,32 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Smjestaj
 {
-  
-    public class SmjestajService : ISmjestajService
+    public class SmjestajService
+        : BaseCRUDService<Model.Smjestaj, Database.Smjestaj, SmjestajSearchRequest, SmjestajInsertUpdateRequest, SmjestajInsertUpdateRequest>, ISmjestajService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public SmjestajService(TuristickaAgencijaContext context, IMapper mapper)
+        public SmjestajService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
-        }
-        public List<Model.Smjestaj> Get()
-        {
-            var list = _context.Smjestaj.ToList();
-           
-            return _mapper.Map<List<Model.Smjestaj>>(list);
         }
 
-        public Model.Smjestaj GetById(int id)
+        protected override IQueryable<Database.Smjestaj> AddFilter(IQueryable<Database.Smjestaj> query, SmjestajSearchRequest search)
         {
-            var entity = _context.Smjestaj.Find(id);
+            if (!string.IsNullOrWhiteSpace(search.NazivSmjestaja))
+            {
+                query = query.Where(x => x.NazivSmjestaja.Contains(search.NazivSmjestaja));
+            }
 
-            return _mapper.Map<Model.Smjestaj>(entity);
+            return query;
         }
 
-        public Model.Smjestaj Insert(SmjestajInsertUpdateRequest request)
+        protected override IQueryable<Database.Smjestaj> AddOrder(IQueryable<Database.Smjestaj> query)
         {
-            var entity = _mapper.Map<Database.Smjestaj>(request);
-
-            _context.Smjestaj.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Smjestaj>(entity);
-        }
-
-        public Model.Smjestaj Update(int id, SmjestajInsertUpdateRequest request)
-        {
-            var entity = _context.Smjestaj.Find(id);
-
-            _context.Smjestaj.Attach(entity);
-            _context.Smjestaj.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Smjestaj>(entity);
+            return query.OrderBy(x => x.NazivSmjestaja);
         }
     }
 }

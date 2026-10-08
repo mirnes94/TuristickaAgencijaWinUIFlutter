@@ -1,17 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Komentar
 {
     public interface IKomentarService
+        : ICRUDService<Model.Komentar, KomentarSearchRequest, KomentarInsertUpdateRequest, KomentarInsertUpdateRequest>
     {
-        List<Model.Komentar> Get(KomentarSearchRequest request);
-        Model.Komentar GetById(int id);
-        Model.Komentar Insert(KomentarInsertUpdateRequest request);
-        Model.Komentar Update(int id, KomentarInsertUpdateRequest request);
-        public void Delete(int id);
     }
 }

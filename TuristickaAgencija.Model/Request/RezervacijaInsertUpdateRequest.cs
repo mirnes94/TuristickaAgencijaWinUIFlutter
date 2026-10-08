@@ -1,26 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Text;
 
 namespace TuristickaAgencija.Model.Request
 {
-    public class RezervacijaInsertUpdateRequest
+    public class RezervacijaInsertUpdateRequest : IKorisnikovZahtjev
     {
-       
-        [Required]
+        [Required(ErrorMessage = "Polje je obavezno.")]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Naziv rezervacije mora imati izmedju 2 i 100 znakova.")]
         public string Ime { get; set; }
-        [Required]
+
+        [Range(1, int.MaxValue, ErrorMessage = "Odaberite korisnika.")]
         public int KorisnikId { get; set; }
-        [Required]
+
+        [Range(1, int.MaxValue, ErrorMessage = "Odaberite putovanje.")]
         public int PutovanjeId { get; set; }
-        [Required]
+
         public DateTime DatumRezervacije { get; set; }
-        [Required]
+
+        [Range(1, 50, ErrorMessage = "Broj osoba mora biti izmedju 1 i 50.")]
         public int BrojOsoba { get; set; }
-        [Required]
+
         public string Status { get; set; }
-        [Required]
+
+        [StringLength(500, ErrorMessage = "Napomena moze imati najvise 500 znakova.")]
         public string Napomena { get; set; }
     }
 }

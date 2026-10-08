@@ -1,62 +1,41 @@
-﻿
 using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Gradovi
 {
-    
-   public class GradoviService:IGradoviService
+    public class GradoviService
+        : BaseCRUDService<Model.Gradovi, Database.Gradovi, GradoviSearchRequest, GradoviInsertUpdateRequest, GradoviInsertUpdateRequest>, IGradoviService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public GradoviService(TuristickaAgencijaContext context, IMapper mapper)
+        public GradoviService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
 
-        public List<Model.Gradovi> Get()
+        protected override IQueryable<Database.Gradovi> AddInclude(IQueryable<Database.Gradovi> query)
         {
-            var list = _context.Gradovi.ToList();
-
-            return _mapper.Map<List<Model.Gradovi>>(list);
+            return query.Include(x => x.Drzava);
         }
 
-        public Model.Gradovi GetById(int id)
+        protected override IQueryable<Database.Gradovi> AddFilter(IQueryable<Database.Gradovi> query, GradoviSearchRequest search)
         {
-            var entity = _context.Gradovi.Find(id);
-          
+            if (!string.IsNullOrWhiteSpace(search.NazivGrada))
+            {
+                query = query.Where(x => x.NazivGrada.Contains(search.NazivGrada));
+            }
+            if (search.DrzavaId.HasValue)
+            {
+                query = query.Where(x => x.DrzavaId == search.DrzavaId);
+            }
 
-            return _mapper.Map<Model.Gradovi>(entity);
+            return query;
         }
 
-        public Model.Gradovi Insert(GradoviInsertUpdateRequest request)
+        protected override IQueryable<Database.Gradovi> AddOrder(IQueryable<Database.Gradovi> query)
         {
-            var entity = _mapper.Map<Database.Gradovi>(request);
-
-            _context.Gradovi.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Gradovi>(entity);
-        }
-
-        public Model.Gradovi Update(int id, GradoviInsertUpdateRequest request)
-        {
-            var entity = _context.Gradovi.Find(id);
-
-            _context.Gradovi.Attach(entity);
-            _context.Gradovi.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Gradovi>(entity);
+            return query.OrderBy(x => x.NazivGrada);
         }
     }
 }

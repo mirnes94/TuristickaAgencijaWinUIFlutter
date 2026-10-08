@@ -1,62 +1,41 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Prevoz
 {
-  
-    public class PrevozService : IPrevozService
+    public class PrevozService
+        : BaseCRUDService<Model.Prevoz, Database.Prevoz, PrevozSearchRequest, PrevozInsertUpdateRequest, PrevozInsertUpdateRequest>, IPrevozService
     {
-
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-        public PrevozService(TuristickaAgencijaContext context, IMapper mapper)
+        public PrevozService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
 
-        public List<Model.Prevoz> Get()
+        protected override IQueryable<Database.Prevoz> AddInclude(IQueryable<Database.Prevoz> query)
         {
-            var list = _context.Prevoz.ToList();
-
-            return _mapper.Map<List<Model.Prevoz>>(list);
+            return query.Include(x => x.Firma);
         }
 
-        public Model.Prevoz GetById(int id)
+        protected override IQueryable<Database.Prevoz> AddFilter(IQueryable<Database.Prevoz> query, PrevozSearchRequest search)
         {
-            var entity = _context.Prevoz.Find(id);
+            if (!string.IsNullOrWhiteSpace(search.TipPrevoza))
+            {
+                query = query.Where(x => x.TipPrevoza.Contains(search.TipPrevoza));
+            }
+            if (search.FirmaId.HasValue)
+            {
+                query = query.Where(x => x.FirmaId == search.FirmaId);
+            }
 
-            return _mapper.Map<Model.Prevoz>(entity);
+            return query;
         }
 
-        public Model.Prevoz Insert(PrevozInsertUpdateRequest request)
+        protected override IQueryable<Database.Prevoz> AddOrder(IQueryable<Database.Prevoz> query)
         {
-            var entity = _mapper.Map<Database.Prevoz>(request);
-
-            _context.Prevoz.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Prevoz>(entity);
-        }
-
-        public Model.Prevoz Update(int id, PrevozInsertUpdateRequest request)
-        {
-            var entity = _context.Prevoz.Find(id);
-
-            _context.Prevoz.Attach(entity);
-            _context.Prevoz.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Prevoz>(entity);
+            return query.OrderBy(x => x.TipPrevoza);
         }
     }
-  
 }

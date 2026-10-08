@@ -1,0 +1,48 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "turisticka_agencija_admin",
+            "cwd": "UI\\turisticka_agencija_admin",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "turisticka_agencija_admin (profile mode)",
+            "cwd": "UI\\turisticka_agencija_admin",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "turisticka_agencija_admin (release mode)",
+            "cwd": "UI\\turisticka_agencija_admin",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "turisticka_agencija_mobile",
+            "cwd": "UI\\turisticka_agencija_mobile",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "turisticka_agencija_mobile (profile mode)",
+            "cwd": "UI\\turisticka_agencija_mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "turisticka_agencija_mobile (release mode)",
+            "cwd": "UI\\turisticka_agencija_mobile",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

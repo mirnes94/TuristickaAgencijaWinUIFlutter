@@ -1,74 +1,63 @@
-﻿
 using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Komentar
 {
-    public class KomentarService : IKomentarService
+    public class KomentarService
+        : BaseCRUDService<Model.Komentar, Database.Komentar, KomentarSearchRequest, KomentarInsertUpdateRequest, KomentarInsertUpdateRequest>, IKomentarService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-
-        public KomentarService(TuristickaAgencijaContext context, IMapper mapper)
+        public KomentarService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
-        public List<Model.Komentar> Get(KomentarSearchRequest request)
-        {
-            var query = _context.Komentar.AsQueryable();
 
-            if (request?.PutovanjeId.HasValue == true)
+        protected override IQueryable<Database.Komentar> AddInclude(IQueryable<Database.Komentar> query)
+        {
+            return query.Include(x => x.Korisnik).Include(x => x.Putovanje);
+        }
+
+        protected override IQueryable<Database.Komentar> AddFilter(IQueryable<Database.Komentar> query, KomentarSearchRequest search)
+        {
+            if (search.PutovanjeId.HasValue)
             {
-                query = query.Where(x => x.PutovanjeId == request.PutovanjeId);
+                query = query.Where(x => x.PutovanjeId == search.PutovanjeId);
             }
-
-
-
-            var list = query.ToList();
-            return _mapper.Map<List<Model.Komentar>>(list);
+            if (search.KorisnikId.HasValue)
+            {
+                query = query.Where(x => x.KorisnikId == search.KorisnikId);
+            }
+            if (!string.IsNullOrWhiteSpace(search.Sadrzaj))
+            {
+                query = query.Where(x => x.Sadrzaj.Contains(search.Sadrzaj));
+            }
+            return query;
         }
 
-        public Model.Komentar GetById(int id)
+        protected override IQueryable<Database.Komentar> AddOrder(IQueryable<Database.Komentar> query)
         {
-            var entity = _context.Komentar.Find(id);
-
-            return _mapper.Map<Model.Komentar>(entity);
+            return query.OrderByDescending(x => x.Datum);
         }
 
-        public Model.Komentar Insert(KomentarInsertUpdateRequest request)
+        protected override Task OnInsertingAsync(Database.Komentar entity, KomentarInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.Komentar>(request);
-
-            _context.Komentar.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Komentar>(entity);
+            if (entity.Datum == default)
+            {
+                entity.Datum = DateTime.Now;
+            }
+            return Task.CompletedTask;
         }
 
-        public Model.Komentar Update(int id, KomentarInsertUpdateRequest request)
+        protected override Task OnUpdatingAsync(Database.Komentar entity, KomentarInsertUpdateRequest request)
         {
-            var entity = _context.Komentar.Find(id);
-
-            _context.Komentar.Attach(entity);
-            _context.Komentar.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Komentar>(entity);
-        }
-        public void Delete(int id)
-        {
-            var entity = _context.Komentar.Find(id);
-            _context.Komentar.Remove(entity);
-            _context.SaveChanges();
+            if (request.Datum == default)
+            {
+                // datum se ne mijenja ako ga klijent nije poslao
+                entity.Datum = Context.Entry(entity).Property(x => x.Datum).OriginalValue;
+            }
+            return Task.CompletedTask;
         }
     }
 }

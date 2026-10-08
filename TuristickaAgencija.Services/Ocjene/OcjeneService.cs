@@ -1,68 +1,83 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Exceptions;
 
 namespace TuristickaAgencija.Services.Ocjene
 {
-    public class OcjeneService : IOcjeneService
+    public class OcjeneService
+        : BaseCRUDService<Model.Ocjene, Database.Ocjene, OcjeneSearchRequest, OcjeneInsertUpdateRequest, OcjeneInsertUpdateRequest>, IOcjeneService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
-
-        public OcjeneService(TuristickaAgencijaContext context, IMapper mapper)
+        public OcjeneService(TuristickaAgencijaContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
         }
 
-        public List<Model.Ocjene> Get(OcjeneSearchRequest request)
+        protected override IQueryable<Database.Ocjene> AddInclude(IQueryable<Database.Ocjene> query)
         {
-            var query = _context.Ocjene.AsQueryable();
+            return query.Include(x => x.Korisnik).Include(x => x.Putovanje);
+        }
 
-            if (request?.PutovanjeId.HasValue == true)
+        protected override IQueryable<Database.Ocjene> AddFilter(IQueryable<Database.Ocjene> query, OcjeneSearchRequest search)
+        {
+            if (search.PutovanjeId.HasValue)
             {
-                query = query.Where(x => x.PutovanjeId == request.PutovanjeId);
+                query = query.Where(x => x.PutovanjeId == search.PutovanjeId);
+            }
+            if (search.KorisnikId.HasValue)
+            {
+                query = query.Where(x => x.KorisnikId == search.KorisnikId);
+            }
+            if (search.Ocjena.HasValue)
+            {
+                query = query.Where(x => x.Ocjena == search.Ocjena);
+            }
+            return query;
+        }
+
+        protected override IQueryable<Database.Ocjene> AddOrder(IQueryable<Database.Ocjene> query)
+        {
+            return query.OrderByDescending(x => x.Datum);
+        }
+
+        /// <summary>
+        /// Korisnik moze ocijeniti putovanje samo jednom (bitno za sistem preporuke).
+        /// Ako ocjena vec postoji, ona se azurira umjesto da se kreira duplikat.
+        /// </summary>
+        public override async Task<Model.Ocjene> InsertAsync(OcjeneInsertUpdateRequest request)
+        {
+            var postojeca = await Context.Ocjene
+                .FirstOrDefaultAsync(x => x.KorisnikId == request.KorisnikId && x.PutovanjeId == request.PutovanjeId);
+
+            if (postojeca != null)
+            {
+                return await UpdateAsync(postojeca.Id, request);
             }
 
-
-
-            var list = query.ToList();
-            return _mapper.Map<List<Model.Ocjene>>(list);
+            return await base.InsertAsync(request);
         }
 
-        public Model.Ocjene GetById(int id)
+        protected override Task OnInsertingAsync(Database.Ocjene entity, OcjeneInsertUpdateRequest request)
         {
-            var entity = _context.Ocjene.Find(id); 
-
-            return _mapper.Map<Model.Ocjene>(entity);
+            entity.Datum = DateTime.Now;
+            return Task.CompletedTask;
         }
 
-        public Model.Ocjene Insert(OcjeneInsertUpdateRequest request)
+        protected override Task OnUpdatingAsync(Database.Ocjene entity, OcjeneInsertUpdateRequest request)
         {
-            var entity = _mapper.Map<Database.Ocjene>(request);
-
-            _context.Ocjene.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Ocjene>(entity);
+            entity.Datum = DateTime.Now;
+            return Task.CompletedTask;
         }
 
-        public Model.Ocjene Update(int id, OcjeneInsertUpdateRequest request)
+        protected override async Task BeforeUpdateAsync(Database.Ocjene entity, OcjeneInsertUpdateRequest request)
         {
-            var entity = _context.Ocjene.Find(id);
-
-            _context.Ocjene.Attach(entity);
-            _context.Ocjene.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Ocjene>(entity);
+            if (await Context.Ocjene.AnyAsync(x => x.KorisnikId == request.KorisnikId
+                                                 && x.PutovanjeId == request.PutovanjeId
+                                                 && x.Id != entity.Id))
+            {
+                throw new UserException("Korisnik je već ocijenio ovo putovanje.");
+            }
         }
     }
 }

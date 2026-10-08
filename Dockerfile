@@ -1,26 +1,15 @@
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-buster-slim AS base
+# Glavni servis - REST API
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
+EXPOSE 5000
+ENV ASPNETCORE_URLS=http://+:5000
 
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY . .
-
-FROM build AS publish
-RUN dotnet publish "TuristickaAgencija.WebAPI" -c Release -o /app
+RUN dotnet publish "TuristickaAgencija.WebAPI/TuristickaAgencija.WebAPI.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
-
-# Postavljanje ASP.NET Core URL-a
-ENV ASPNETCORE_URLS=http://+:5000
-EXPOSE 5000/tcp
-
-# Kopiranje sadržaja iz direktorijuma publish
-COPY --from=publish /app .
-
-# Kopiranje potrebnih fajlova u kontejner
-COPY ./TuristickaAgencija.WebAPI/TestImage /app/TestImage
-
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "TuristickaAgencija.WebAPI.dll"]
-
-

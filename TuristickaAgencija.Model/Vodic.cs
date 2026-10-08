@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace TuristickaAgencija.Model
 {
@@ -12,7 +11,5 @@ namespace TuristickaAgencija.Model
         public string Kontakt { get; set; }
         public string Jmbg { get; set; }
         public byte[] Slika { get; set; }
-
-        //public virtual ICollection<VodiciPutovanja> VodiciPutovanja { get; set; }
     }
 }

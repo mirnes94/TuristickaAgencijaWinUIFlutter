@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Prevoz
 {
-    public interface IPrevozService
+    public interface IPrevozService : ICRUDService<Model.Prevoz, PrevozSearchRequest, PrevozInsertUpdateRequest, PrevozInsertUpdateRequest>
     {
-        List<Model.Prevoz> Get();
-        Model.Prevoz GetById(int id);
-        Model.Prevoz Insert(PrevozInsertUpdateRequest request);
-        Model.Prevoz Update(int id, PrevozInsertUpdateRequest request);
     }
 }

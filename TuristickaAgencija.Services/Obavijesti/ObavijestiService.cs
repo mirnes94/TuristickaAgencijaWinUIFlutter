@@ -1,73 +1,92 @@
-﻿using AutoMapper;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using TuristickaAgencija.Model;
+using TuristickaAgencija.Model.Messages;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 using TuristickaAgencija.Services.Database;
+using TuristickaAgencija.Services.Messaging;
 
 namespace TuristickaAgencija.Services.Obavijesti
 {
-    public class ObavijestiService : IObavijestiService
+    public class ObavijestiService
+        : BaseCRUDService<Model.Obavijesti, Database.Obavijesti, ObavijestiSearchRequest, ObavijestiInsertUpdateRequest, ObavijestiInsertUpdateRequest>,
+          IObavijestiService
     {
-        private readonly TuristickaAgencijaContext _context;
-        private readonly IMapper _mapper;
+        private readonly IMessageProducer _messageProducer;
 
-        public ObavijestiService(TuristickaAgencijaContext context, IMapper mapper)
+        public ObavijestiService(TuristickaAgencijaContext context, IMapper mapper, IMessageProducer messageProducer)
+            : base(context, mapper)
         {
-            _context = context;
-            _mapper = mapper;
+            _messageProducer = messageProducer;
         }
 
-        public List<Model.Obavijesti> Get(ObavijestiSearchRequest request)
+        protected override IQueryable<Database.Obavijesti> AddInclude(IQueryable<Database.Obavijesti> query)
         {
-            var query = _context.Obavijesti.AsQueryable();
+            return query.Include(x => x.Korisnik);
+        }
 
-            if (request?.KorisnikId.HasValue == true)
+        protected override IQueryable<Database.Obavijesti> AddFilter(IQueryable<Database.Obavijesti> query, ObavijestiSearchRequest search)
+        {
+            if (search.KorisnikId.HasValue)
             {
-                query = query.Where(x => x.KorisnikId == request.KorisnikId);
+                // korisnik vidi obavijesti namijenjene njemu i opce obavijesti (bez primaoca)
+                query = query.Where(x => x.KorisnikId == search.KorisnikId || x.KorisnikId == null);
+            }
+            if (!string.IsNullOrWhiteSpace(search.Naziv))
+            {
+                query = query.Where(x => x.Naziv.Contains(search.Naziv));
+            }
+            return query;
+        }
+
+        protected override IQueryable<Database.Obavijesti> AddOrder(IQueryable<Database.Obavijesti> query)
+        {
+            return query.OrderByDescending(x => x.Datum);
+        }
+
+        protected override Task OnInsertingAsync(Database.Obavijesti entity, ObavijestiInsertUpdateRequest request)
+        {
+            entity.Datum = DateTime.Now;
+            return Task.CompletedTask;
+        }
+
+        protected override Task OnUpdatingAsync(Database.Obavijesti entity, ObavijestiInsertUpdateRequest request)
+        {
+            if (request.Datum == default)
+            {
+                // datum se ne mijenja ako ga klijent nije poslao
+                entity.Datum = Context.Entry(entity).Property(x => x.Datum).OriginalValue;
+            }
+            return Task.CompletedTask;
+        }
+
+        protected override async Task AfterInsertAsync(Database.Obavijesti entity, ObavijestiInsertUpdateRequest request)
+        {
+            if (!request.PosaljiEmail)
+            {
+                return;
             }
 
-            var list = query.ToList();
-            return _mapper.Map<List<Model.Obavijesti>>(list);
-        }
+            // Obavijest za jednog korisnika ili za sve aktivne klijente.
+            var upit = Context.Korisnici.AsNoTracking().Where(x => x.Status == true);
+            upit = entity.KorisnikId.HasValue
+                ? upit.Where(x => x.Id == entity.KorisnikId.Value)
+                : upit.Where(x => x.KorisniciUloge.Any(u => u.Uloga.Naziv == UlogeNazivi.Klijent));
 
-        public Model.Obavijesti GetById(int id)
-        {
-            var entity = _context.Obavijesti.Find(id);
+            var primaoci = await upit.Select(x => new { x.Email, x.Ime }).ToListAsync();
 
-            return _mapper.Map<Model.Obavijesti>(entity);
-        }
-
-        public Model.Obavijesti Insert(ObavijestiInsertUpdateRequest request)
-        {
-            var entity = _mapper.Map<Database.Obavijesti>(request);
-
-            _context.Obavijesti.Add(entity);
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Obavijesti>(entity);
-        }
-
-        public Model.Obavijesti Update(int id, ObavijestiInsertUpdateRequest request)
-        {
-            var entity = _context.Obavijesti.Find(id);
-
-            _context.Obavijesti.Attach(entity);
-            _context.Obavijesti.Update(entity);
-
-            _mapper.Map(request, entity);
-
-            _context.SaveChanges();
-
-            return _mapper.Map<Model.Obavijesti>(entity);
-        }
-
-        public void Delete(int id)
-        {
-            var entity = _context.Obavijesti.Find(id);
-            _context.Obavijesti.Remove(entity);
-            _context.SaveChanges();
+            foreach (var primalac in primaoci.Where(x => !string.IsNullOrWhiteSpace(x.Email)))
+            {
+                _messageProducer.Posalji(new NotifikacijaPoruka
+                {
+                    Tip = TipNotifikacije.Obavijest,
+                    PrimalacEmail = primalac.Email,
+                    PrimalacIme = primalac.Ime,
+                    Naslov = entity.Naziv,
+                    Sadrzaj = entity.Sadrzaj
+                });
+            }
         }
     }
 }

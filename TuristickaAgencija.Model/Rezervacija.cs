@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace TuristickaAgencija.Model
 {
-    public partial class Rezervacija
+    public partial class Rezervacija : IKorisnikovZapis
     {
         public int Id { get; set; }
         public string Ime { get; set; }
@@ -14,5 +13,13 @@ namespace TuristickaAgencija.Model
         public int BrojOsoba { get; set; }
         public string Status { get; set; }
         public string Napomena { get; set; }
+
+        public string KorisnikImePrezime { get; set; }
+        public string PutovanjeNaziv { get; set; }
+        public DateTime? DatumPolaska { get; set; }
+        public double UkupnaCijena { get; set; }
+        public double Uplaceno { get; set; }
+
+        int? IKorisnikovZapis.VlasnikId => KorisnikId;
     }
 }

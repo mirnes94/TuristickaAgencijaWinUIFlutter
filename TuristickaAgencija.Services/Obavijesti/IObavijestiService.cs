@@ -1,18 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using TuristickaAgencija.Model.Request;
+using TuristickaAgencija.Services.Base;
 
 namespace TuristickaAgencija.Services.Obavijesti
 {
     public interface IObavijestiService
+        : ICRUDService<Model.Obavijesti, ObavijestiSearchRequest, ObavijestiInsertUpdateRequest, ObavijestiInsertUpdateRequest>
     {
-        List<Model.Obavijesti> Get(ObavijestiSearchRequest request);
-        Model.Obavijesti GetById(int id);
-        Model.Obavijesti Insert(ObavijestiInsertUpdateRequest request);
-        Model.Obavijesti Update(int id, ObavijestiInsertUpdateRequest request);
-
-        public void Delete(int id);
     }
 }
